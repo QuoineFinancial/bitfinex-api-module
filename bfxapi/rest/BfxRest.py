@@ -9,7 +9,7 @@ import json
 
 from ..utils.CustomLogger import CustomLogger
 from ..utils.auth import generate_auth_headers
-from ..models import Wallet, Order, Position, Trade, FundingLoan, FundingOffer
+from ..models import Wallet, Order, Position, Trade, FundingLoan, FundingOffer, Movement
 from ..models import FundingCredit
 
 
@@ -237,18 +237,19 @@ class BfxRest:
         raw_trades = await self.post(endpoint)
         return [Trade.from_raw_rest_trade(rt) for rt in raw_trades]
 
-    async def get_trades(self, symbol, start, end, limit=25):
+    async def get_trades(self, start, end, symbol=None, limit=25):
         """
         Get all of the trades between the start and end period associated with API_KEY
         - Requires authentication.
 
-        @param symbol string: pair symbol i.e tBTCUSD
+        @param symbol string: pair symbol i.e tBTCUSD. If empty all symbols will be returend
         @param start int: millisecond start time
         @param end int: millisecond end time
         @param limit int: max number of items in response
         @return Array <models.Trade>
         """
-        endpoint = "auth/r/trades/{}/hist".format(symbol)
+
+        endpoint = "auth/r/trades/{}/hist".format(symbol) if symbol else "auth/r/trades/hist"
         params = "?start={}&end={}&limit={}".format(start, end, limit)
         raw_trades = await self.post(endpoint, params=params)
         return [Trade.from_raw_rest_trade(rt) for rt in raw_trades]
@@ -325,6 +326,22 @@ class BfxRest:
         params = "?start={}&end={}&limit={}".format(start, end, limit)
         credits = await self.post(endpoint, params=params)
         return [FundingCredit.from_raw_credit(c) for c in credits]
+
+    async def get_currency_movements(self, currency, start, end, limit=25):
+        """
+        Get all the movements of a given currency.
+
+        @param currency string: currency symbol i.e. BTC
+        @param start int: millisecond start time
+        @param end int: millisecond end time
+        @param limit int: max number of items in response (max 25)
+        @return Array <models.Movement>
+        """
+        endpoint = f'auth/r/movements/{currency}/hist'
+        params = f"?start={start.timestamp() * 1000}&end={end.timestamp() * 1000}&limit={limit}"
+        raw_movements = await self.post(endpoint, params=params)
+        return [Movement.from_raw_rest_movement(rm) for rm in raw_movements]
+
 
     ##################################################
     #                     Orders                     #
